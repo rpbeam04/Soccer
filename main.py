@@ -1,15 +1,39 @@
 # Beam Brackets Soccer Simulation
 
 # Imports
+import os
+from pprint import pprint
+from textwrap import wrap
 
 # Initial Phase
+terminal_width = os.get_terminal_size().columns
 
 # Formation
-print("Input a custom formation in the format n-n-n-n...")
-valid_formation = False
+keyword_names = ["narrow","wide","wingbacks","fullbacks","false-9"]
+position_names = ["LWB","LB","CB","RB","RWB",
+             "DM","CDM","LM","CM","RM","AM","CAM",
+             "LW","LF","CF","ST","RF","RW"]
+
+print(*wrap("To choose formation, input the desired formation followed by optional keywords. To specify a certain position, include the position as a keyword. Separate keywords by spaces.", terminal_width), sep='\n')
+print(*wrap("Notes: 3-back formations default to no fullbacks/wingbacks, 5-back formations default to wingbacks, 3-row formations default to all CMs in the midfield.", terminal_width), sep='\n')
+print(*wrap("Ex: 4-3-3, 3-4-1-2, 5-5, 3-5-2 wingbacks, 4-2-3-1 narrow, 5-3-2 fullbacks CAM", terminal_width), sep='\n')
+print(*wrap(f"Possible keywords: {', '.join(keyword_names)}", terminal_width), sep='\n')
+
+valid_formation = False 
 while not valid_formation:
-    formation = input("Formation: ")
-    formation = formation.split("-")
+    formation = input("Select Formation: ")
+    formation = formation.split(" ")
+    keyw = formation[1:]
+    kflag = False
+    for kw in keyw:
+        if kw not in keyword_names and kw not in position_names:
+            print("ERROR: Unrecognized keyword.")
+            kflag = True
+            break
+    if kflag:
+        continue
+    formation = formation[0].split("-")
+
     if len(formation) < 2:
         print("ERROR: Formation must have at least 2 rows.")
         continue
@@ -24,46 +48,71 @@ while not valid_formation:
     if flag:
         continue
     if sum(formation) != 10:
-        print("ERROR: Formation must be for 10 players.")
+        print("ERROR: Formation must be for 10 outfield players.")
         continue
     valid_formation = True
-print(formation)
 
-def print_soccer_formation(formation):
-    # Define the positions of players in the formation
-    goalkeeper = "GK"
-    defenders = ["igqprioh", "CB", "iqpguohiqhihb", "RB"]
-    midfielders = ["LM", "CM", "RM"]
-    attackers = ["LW", "ST", "RW"]
+def assign_positions(formation: list[int], keyw: list):
+    """
+    docstring
+    """
+    assert(isinstance(formation, list)), "ERROR: Formation must be list"
+    positions = []
 
-    # Print the formation with absolute positions
-    print("Soccer Formation:", formation)
-    print(f"{'':<10}{'':<5}{'':<5}{'':<5}{'':<5}{'':<5}")
-    print(f"{'':<10}{attackers[0]:<5}{attackers[1]:<5}{attackers[2]:<5}{'':<5}{'':<5}{'':<5}")
-    print(f"{defenders[0]:<10}{defenders[1]:<5}{defenders[2]:<5}{defenders[3]:<5}{goalkeeper:<5}{'':<5}")
-    print(f"{'':<10}{midfielders[0]:<5}{midfielders[1]:<5}{midfielders[2]:<5}{'':<5}{'':<5}{'':<5}")
+    for i,row in enumerate(formation):
+        if i == 0:
+            if row <= 3:
+                positions.append(["CB"]*row)
+            elif row == 4:
+                positions.append(["LB", "CB", "CB", "RB"])
+            else:
+                positions.append(["LWB"]+["CB"]*(row-2)+["RWB"])
+        elif i == len(formation) - 1:
+            if row <= 2:
+                positions.append(["ST"]*row)
+            else:
+                positions.append(["LW"]+["ST"]*(row-2)+["RW"])
+        elif i == 1 and len(formation) > 3:
+            positions.append(["CDM"]*row)
+        elif i == len(formation) - 2 and len(formation) > 3:
+            if row > 3:
+                positions.append(["LM"]+["CAM"]*(row-2)+["RM"])
+            else:
+                positions.append(["CAM"]*row)
+        else:
+            if row > 3:
+                positions.append(["LM"]+["CM"]*(row-2)+["RM"])
+            else:
+                positions.append(["CM"]*row)
 
-# Example usage
-print_soccer_formation("4-3-3")
+    keyw = [x for x in keyw if x in keyword_names]
+    pos = [x for x in keyw if x in position_names]
+    flat = [x for row in positions for x in row]
 
-import os
+    for p in pos:
+        if p not in flat:
+            pass
 
-def center_text(text):
-    # Get the size of the terminal window
-    terminal_width = os.get_terminal_size().columns
+    for kw in keyword_names:
+        if kw in keyw:
+            if kw == "fullbacks":
+                lwb = find_position("LWB", positions)
+                rwb = find_position("RWB", positions)
+                if lwb and rwb:
+                    positions[lwb[0]][lwb[1]] = "LB"
+                    positions[rwb[0]][rwb[1]] = "RB"
 
-    # Calculate the amount of padding needed to center the text
-    padding = (terminal_width - len(text)) // 2
+    return positions
 
-    # Construct the centered text with padding
-    centered_text = ' ' * padding + text + ' ' * padding
+def print_formation(positions: list):
+    print(*positions)
+    return
 
-    # Adjust for odd terminal widths
-    if len(centered_text) < terminal_width:
-        centered_text += ' ' * (terminal_width - len(centered_text))
+def find_position(pos: str, positions: list):
+    for i,row in enumerate(positions):
+        for j,p in enumerate(row):
+            if pos == p:
+                return (i,j)
+    return False
 
-    return centered_text
-
-# Example usage
-centered = center_text("Centered Text")
-print(centered)
+print_formation(assign_positions(formation, keyw))
